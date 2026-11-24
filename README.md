@@ -1,4 +1,4 @@
-# Dungeon Konyol
+# Generic Rougelike Game
 
 Roguelike berbasis giliran dengan antarmuka terminal (TUI). Proyek UAS Pemrograman Berorientasi Objek.
 Bahasa C++17, UI memakai [FTXUI](https://github.com/ArthurSonzogni/FTXUI) v6.1.9 (diunduh otomatis oleh CMake), build dengan CMake.
