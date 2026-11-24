@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/test_extras.dir/link.d CMakeFiles/test_extras.dir/tests/test_extras.cpp.o -o test_extras  librogue_core.a

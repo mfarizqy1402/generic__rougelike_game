@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/test_scores.dir/link.d CMakeFiles/test_scores.dir/tests/test_scores.cpp.o -o test_scores  librogue_core.a

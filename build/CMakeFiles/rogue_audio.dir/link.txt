@@ -1,0 +1,2 @@
+/usr/bin/ar qc librogue_audio.a CMakeFiles/rogue_audio.dir/src/audio/MiniaudioPlayer.cpp.o
+/usr/bin/ranlib librogue_audio.a

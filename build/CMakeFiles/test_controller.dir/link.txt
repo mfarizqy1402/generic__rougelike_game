@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/test_controller.dir/link.d CMakeFiles/test_controller.dir/tests/test_controller.cpp.o -o test_controller  librogue_core.a

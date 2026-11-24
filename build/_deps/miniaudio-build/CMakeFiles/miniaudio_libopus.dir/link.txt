@@ -1,0 +1,2 @@
+/usr/bin/ar qc libminiaudio_libopus.a CMakeFiles/miniaudio_libopus.dir/extras/decoders/libopus/miniaudio_libopus.c.o
+/usr/bin/ranlib libminiaudio_libopus.a
