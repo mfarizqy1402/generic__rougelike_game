@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/test_player.dir/link.d CMakeFiles/test_player.dir/tests/test_player.cpp.o -o test_player  librogue_core.a librogue_audio.a librogue_core.a -ldl _deps/miniaudio-build/libminiaudio.a -lm
