@@ -1,4 +1,4 @@
-// Tes ui/Viewport (logika tampilan tanpa FTXUI).
+// Tes ui/Viewport (logika tampilan tanpa UI).
 //
 // Seperti test_controller, tes ini memakai const_cast pada controller.dungeon()
 // agar situasinya pasti (posisi pemain, entity di sekitarnya). Hanya untuk tes.

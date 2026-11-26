@@ -5,201 +5,191 @@
 #include <string>
 #include <vector>
 
-#include <ftxui/component/component.hpp>
-
 #include "core/Exceptions.hpp"
 #include "core/Player.hpp"
 #include "core/Types.hpp"
+#include "ui/Palette.hpp"
+#include "ui/Theme.hpp"
 #include "ui/Viewport.hpp"
 
 namespace rogue {
 
 namespace {
 
-// Viewport 17x15 petak; satu petak = 3 kolom karakter supaya simbol bisa
-// berada tepat di tengah petak (lebar 17*3 + 2 border = 53 kolom).
+// Viewport 17x15 petak; satu petak = 32 px.
 constexpr int kViewW = 17;
 constexpr int kViewH = 15;
-constexpr int kHudWidth = 27;
+constexpr int kTile = 32;
 constexpr std::size_t kLogLines = 4;
+constexpr std::size_t kMaxHudItems = 9;  // tombol 1-9
 
-ftxui::Color toFtxuiColor(ColorId id) {
-  using ftxui::Color;
-  switch (id) {
-    case ColorId::Dim:
-      return Color::GrayLight;  // dinding: blok abu-abu terang agar mudah dilihat
-    case ColorId::Yellow:
-      return Color::Yellow;
-    case ColorId::Cyan:
-      return Color::Cyan;
-    case ColorId::Red:
-      return Color::Red;
-    case ColorId::LightGreen:
-      return Color::GreenLight;
-    case ColorId::DarkGreen:
-      return Color::DarkGreen;
-    case ColorId::Brown:
-      return Color::DarkOrange3;
-    case ColorId::Default:
-      break;
+constexpr int kMapX = 16;
+constexpr int kMapY = 16;
+constexpr int kHudX = 584;
+constexpr int kHudW = 360;
+constexpr int kHudLine = 26;
+constexpr int kLogY = 508;
+constexpr int kLogLine = 20;
+constexpr int kLegendY = 596;
+constexpr int kLegendRow = 24;
+constexpr int kFooterY = 656;
+constexpr int kWindowW = 960;
+constexpr int kGlyphSize = 30;
+constexpr int kTextSize = 18;
+constexpr int kSmallSize = 16;
+
+// Tinta utama tema (teks gelap di atas panel kaca terang).
+Rgb ink() { return colorOf(ColorId::Default); }
+
+constexpr int kMapW = kViewW * kTile;
+constexpr int kMapH = kViewH * kTile;
+constexpr int kHudH = kMapH + 2;
+constexpr int kLogPanelY = 500;
+constexpr int kLogPanelH = 88;
+constexpr int kLegendPanelY = 592;
+constexpr int kLegendPanelH = 54;
+
+// Satu petak legenda/peta pada (x, y) berukuran 32 px.
+void drawCell(ICanvas& canvas, int x, int y, char glyph, ColorId color) {
+  if (glyph == '#') {
+    canvas.fillRect(x, y, kTile, kTile, colorOf(color));
+  } else if (glyph == ' ') {
+    if (color == ColorId::DarkGreen) canvas.fillRect(x, y, kTile, kTile, colorOf(color));
+  } else {
+    const std::string s(1, glyph);
+    const int w = canvas.textWidth(s, kGlyphSize);
+    canvas.text(s, x + (kTile - w) / 2, y + (kTile - kGlyphSize) / 2, kGlyphSize, colorOf(color));
   }
-  return Color::Default;
-}
-
-// Satu petak = 3 kolom. Dinding '#' digambar blok penuh; simbol lain di tengah;
-// lantai kosong.
-std::string cellText(char glyph) {
-  if (glyph == '#') return "\xE2\x96\x88\xE2\x96\x88\xE2\x96\x88";  // U+2588 x3
-  return std::string(" ") + glyph + " ";
-}
-
-// Teks petak dengan warnanya; zona aman (spasi + DarkGreen) memakai latar hijau.
-ftxui::Element cellElement(const std::string& content, ColorId id, bool background) {
-  using namespace ftxui;
-  Element e = text(content);
-  if (background) return e | bgcolor(toFtxuiColor(id));
-  return e | color(toFtxuiColor(id));
 }
 
 }  // namespace
 
-GameScreen::GameScreen(AppContext& context) : context_(context) {
-  using namespace ftxui;
-  Component view = Renderer([this] { return render(); });
-  root_ = CatchEvent(view, [this](Event event) { return handleEvent(event); });
-}
-
-ftxui::Component GameScreen::component() { return root_; }
+GameScreen::GameScreen(AppContext& context) : context_(context) {}
 
 // ---------------------------------------------------------------------------
 // Input: satu tombol = satu panggilan controller
 // ---------------------------------------------------------------------------
 
-bool GameScreen::handleEvent(const ftxui::Event& event) {
-  using ftxui::Event;
+void GameScreen::update(const InputFrame& input) {
+  if (finished_) return;
 
-  enum class Action { None, Move, Item };
-  Action action = Action::None;
-  Dir dir = Dir::None;
-  std::size_t itemIndex = 0;
-
-  if (event == Event::ArrowUp || event == Event::Character('w') ||
-      event == Event::Character('W')) {
-    action = Action::Move;
-    dir = Dir::Up;
-  } else if (event == Event::ArrowDown || event == Event::Character('s') ||
-             event == Event::Character('S')) {
-    action = Action::Move;
-    dir = Dir::Down;
-  } else if (event == Event::ArrowLeft || event == Event::Character('a') ||
-             event == Event::Character('A')) {
-    action = Action::Move;
-    dir = Dir::Left;
-  } else if (event == Event::ArrowRight || event == Event::Character('d') ||
-             event == Event::Character('D')) {
-    action = Action::Move;
-    dir = Dir::Right;
-  } else if (event == Event::Character(' ')) {
-    action = Action::Move;  // spasi = diam
-    dir = Dir::None;
-  } else if (event.is_character() && event.character().size() == 1 &&
-             event.character()[0] >= '1' && event.character()[0] <= '9') {
-    action = Action::Item;
-    itemIndex = static_cast<std::size_t>(event.character()[0] - '1');
+  for (Key key : input.pressed) {
+    switch (key) {
+      case Key::Up:    perform(Action::Move, static_cast<int>(Dir::Up)); break;
+      case Key::Down:  perform(Action::Move, static_cast<int>(Dir::Down)); break;
+      case Key::Left:  perform(Action::Move, static_cast<int>(Dir::Left)); break;
+      case Key::Right: perform(Action::Move, static_cast<int>(Dir::Right)); break;
+      default: break;
+    }
+    if (finished_) return;
   }
 
-  if (action == Action::None) return false;
+  for (char ch : input.typed) {
+    switch (ch) {
+      case 'w': case 'W': perform(Action::Move, static_cast<int>(Dir::Up)); break;
+      case 's': case 'S': perform(Action::Move, static_cast<int>(Dir::Down)); break;
+      case 'a': case 'A': perform(Action::Move, static_cast<int>(Dir::Left)); break;
+      case 'd': case 'D': perform(Action::Move, static_cast<int>(Dir::Right)); break;
+      case ' ': perform(Action::Move, static_cast<int>(Dir::None)); break;  // spasi = diam
+      default:
+        if (ch >= '1' && ch <= '9') perform(Action::Item, ch - '1');
+        break;
+    }
+    if (finished_) return;
+  }
+}
 
+void GameScreen::perform(Action action, int dirOrIndex) {
   try {
     if (action == Action::Move) {
-      context_.controller.movePlayer(dir);
+      context_.controller.movePlayer(static_cast<Dir>(dirOrIndex));
     } else {
-      context_.controller.useItem(itemIndex);
+      context_.controller.useItem(static_cast<std::size_t>(dirOrIndex));
     }
     message_.clear();
   } catch (const GameException& error) {
     message_ = error.what();
   }
 
-  if (context_.controller.isOver()) context_.screens.go(ScreenId::GameOver);
-  return true;
+  if (context_.controller.isOver()) {
+    finished_ = true;
+    context_.screens.go(ScreenId::GameOver);
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Tampilan
 // ---------------------------------------------------------------------------
 
-ftxui::Element GameScreen::render() const {
-  using namespace ftxui;
+void GameScreen::draw(ICanvas& canvas) const {
   try {
-    Element top = hbox({
-        renderMap(),
-        renderHud() | size(WIDTH, EQUAL, kHudWidth),
-    });
+    theme::background(canvas, kWindowW, 680);
+    drawMap(canvas);
+    drawHud(canvas);
+    drawLog(canvas);
+    drawLegend(canvas);
 
-    Element footer =
-        message_.empty()
-            ? text("WASD/Panah: gerak | Spasi: diam | 1-9: pakai item | Esc: keluar") |
-                  dim
-            : text("! " + message_) | color(Color::Red);
-
-    return vbox({top, renderLog(), renderLegend(), footer});
-  } catch (const GameException& error) {
-    return text(std::string("Galat: ") + error.what()) | color(Color::Red);
-  }
-}
-
-ftxui::Element GameScreen::renderMap() const {
-  using namespace ftxui;
-  const auto grid = buildViewport(context_.controller, kViewW, kViewH);
-
-  Elements rows;
-  for (const auto& row : grid) {
-    // Petak bersebelahan berwarna sama digabung jadi satu teks.
-    Elements runs;
-    std::string run;
-    ColorId runColor = ColorId::Default;
-    bool runBackground = false;
-    auto flush = [&] {
-      if (!run.empty()) runs.push_back(cellElement(run, runColor, runBackground));
-      run.clear();
-    };
-    for (const Cell& cell : row) {
-      const bool background = cell.color == ColorId::DarkGreen && cell.glyph == ' ';
-      if (!run.empty() && (cell.color != runColor || background != runBackground)) flush();
-      runColor = cell.color;
-      runBackground = background;
-      run += cellText(cell.glyph);
+    if (message_.empty()) {
+      canvas.text(theme::fit(canvas, "WASD/Panah: gerak | Spasi: diam | 1-9: pakai item | Esc: keluar",
+                             kSmallSize, kWindowW - 2 * kMapX),
+                  kMapX, kFooterY, kSmallSize, ink());
+    } else {
+      canvas.text(theme::fit(canvas, "! " + message_, kSmallSize, kWindowW - 2 * kMapX), kMapX, kFooterY,
+                  kSmallSize, colorOf(ColorId::Red));
     }
-    flush();
-    rows.push_back(hbox(std::move(runs)));
+  } catch (const GameException& error) {
+    canvas.text(theme::fit(canvas, std::string("Galat: ") + error.what(), kTextSize, kWindowW - 2 * kMapX),
+                kMapX, kMapY, kTextSize, colorOf(ColorId::Red));
   }
-  return vbox(std::move(rows)) | border;
 }
 
-ftxui::Element GameScreen::renderHud() const {
-  using namespace ftxui;
+void GameScreen::drawMap(ICanvas& canvas) const {
+  const auto grid = buildViewport(context_.controller, kViewW, kViewH);
+  theme::panel(canvas, kMapX, kMapY, kMapW, kMapH);  // lantai: kaca terang
+  for (int row = 0; row < kViewH; ++row) {
+    for (int col = 0; col < kViewW; ++col) {
+      const Cell& cell = grid[static_cast<std::size_t>(row)][static_cast<std::size_t>(col)];
+      drawCell(canvas, kMapX + col * kTile, kMapY + row * kTile, cell.glyph, cell.color);
+    }
+  }
+  canvas.strokeRect(kMapX - 1, kMapY - 1, kMapW + 2, kMapH + 2, theme::kSilverDark);
+}
+
+void GameScreen::drawHud(ICanvas& canvas) const {
   const GameController& c = context_.controller;
+  const int innerX = kHudX + 12;
+  const int innerW = kHudW - 24;
+  int y = kMapY - 1 + theme::kTitleBarH + 8;
 
   const int hp = c.playerHp();
   const float ratio = static_cast<float>(hp) / static_cast<float>(Player::kMaxHp);
-  Color hpColor = Color::Green;
+  Rgb hpColor = colorOf(ColorId::LightGreen);
   if (ratio <= 0.25f) {
-    hpColor = Color::Red;
+    hpColor = colorOf(ColorId::Red);
   } else if (ratio <= 0.5f) {
-    hpColor = Color::Yellow;
+    hpColor = colorOf(ColorId::Yellow);
   }
 
+  theme::window(canvas, kHudX, kMapY - 1, kHudW, kHudH, "Status");
+
   // Anggaran 15 baris isi: 4 (nama, lantai+skor, HP, gauge) + 1 (status)
-  // + 1 (judul item) + 9 (item maksimum) = 15. Tidak boleh ada baris lain.
-  Elements lines;
-  lines.push_back(text(c.playerName()) | bold);
-  lines.push_back(text("Lantai " + std::to_string(c.depth()) + "   Skor " +
-                       std::to_string(c.summary().score)));
-  lines.push_back(text("HP " + std::to_string(hp) + "/" +
-                       std::to_string(Player::kMaxHp)) |
-                  color(hpColor));
-  lines.push_back(gauge(ratio) | color(hpColor));
+  // + 1 (judul item) + 9 (item maksimum) = 15.
+  canvas.text(theme::fit(canvas, c.playerName(), kTextSize, innerW), innerX, y, kTextSize, ink());
+  y += kHudLine;
+  canvas.text(theme::fit(canvas,
+                  "Lantai " + std::to_string(c.depth()) + "   Skor " +
+                      std::to_string(c.summary().score),
+                  kTextSize, innerW),
+              innerX, y, kTextSize, ink());
+  y += kHudLine;
+  canvas.text("HP " + std::to_string(hp) + "/" + std::to_string(Player::kMaxHp), innerX, y,
+              kTextSize, hpColor);
+  y += kHudLine;
+  const int gaugeW = std::max(0, std::min(innerW, static_cast<int>(ratio * innerW)));
+  canvas.fillRect(innerX, y, innerW, 14, theme::kSilver);  // jalur slider
+  if (gaugeW > 0) canvas.fillRect(innerX, y, gaugeW, 14, hpColor);
+  canvas.strokeRect(innerX, y, innerW, 14, theme::kSilverDark);
+  y += kHudLine;
 
   const std::vector<std::string> statuses = c.statusNames();
   std::string statusText = "Status: ";
@@ -208,48 +198,57 @@ ftxui::Element GameScreen::renderHud() const {
     if (i > 0) statusText += ", ";
     statusText += statuses[i];
   }
-  lines.push_back(text(statusText));
+  canvas.text(theme::fit(canvas, statusText, kTextSize, innerW), innerX, y, kTextSize, ink());
+  y += kHudLine;
 
-  lines.push_back(text("Item:") | bold);
+  canvas.text("Item:", innerX, y, kTextSize, colorOf(ColorId::Yellow));
+  y += kHudLine;
   const std::vector<std::string> items = c.inventoryNames();
-  if (items.empty()) lines.push_back(text("  (kosong)") | dim);
-  for (std::size_t i = 0; i < items.size(); ++i) {
-    lines.push_back(text(" [" + std::to_string(i + 1) + "] " + items[i]));
+  if (items.empty()) {
+    canvas.text("  (kosong)", innerX, y, kTextSize, colorOf(ColorId::Dim));
   }
-
-  // Tinggi HUD disamakan dengan kotak peta (15 baris isi + 2 border).
-  return vbox(std::move(lines)) | border | size(HEIGHT, EQUAL, kViewH + 2);
+  for (std::size_t i = 0; i < items.size() && i < kMaxHudItems; ++i) {
+    canvas.text(theme::fit(canvas, " [" + std::to_string(i + 1) + "] " + items[i], kTextSize, innerW),
+                innerX, y, kTextSize, ink());
+    y += kHudLine;
+  }
 }
 
-ftxui::Element GameScreen::renderLegend() const {
-  using namespace ftxui;
-  const std::vector<LegendItem> items = legend();
-  const std::size_t perRow = (items.size() + 1) / 2;
-
-  Elements rows;
-  for (std::size_t start = 0; start < items.size(); start += perRow) {
-    Elements cells;
-    for (std::size_t i = start; i < std::min(items.size(), start + perRow); ++i) {
-      const bool background = items[i].color == ColorId::DarkGreen && items[i].glyph == ' ';
-      cells.push_back(cellElement(cellText(items[i].glyph), items[i].color, background));
-      cells.push_back(text(" " + items[i].label + "   "));
-    }
-    rows.push_back(hbox(std::move(cells)));
-  }
-  return vbox(std::move(rows));
-}
-
-ftxui::Element GameScreen::renderLog() const {
-  using namespace ftxui;
+void GameScreen::drawLog(ICanvas& canvas) const {
+  theme::panel(canvas, kMapX - 4, kLogPanelY, kWindowW - 2 * (kMapX - 4), kLogPanelH);
   const auto& log = context_.controller.log();
   const std::size_t shown = std::min(kLogLines, log.size());
-
-  Elements lines;
+  int y = kLogY;
   for (std::size_t i = log.size() - shown; i < log.size(); ++i) {
-    lines.push_back(text("> " + log[i]));
+    canvas.text(theme::fit(canvas, "> " + log[i], kSmallSize, kWindowW - 2 * kMapX), kMapX, y,
+                kSmallSize, ink());
+    y += kLogLine;
   }
-  while (lines.size() < kLogLines) lines.push_back(text(""));  // tinggi tetap
-  return vbox(std::move(lines));
+}
+
+void GameScreen::drawLegend(ICanvas& canvas) const {
+  const std::vector<LegendItem> items = legend();
+  const std::size_t perRow = (items.size() + 1) / 2;
+  const int colW = (kWindowW - 2 * kMapX) / static_cast<int>(perRow);
+  theme::panel(canvas, kMapX - 4, kLegendPanelY, kWindowW - 2 * (kMapX - 4), kLegendPanelH);
+
+  for (std::size_t i = 0; i < items.size(); ++i) {
+    const int col = static_cast<int>(i % perRow);
+    const int row = static_cast<int>(i / perRow);
+    const int x = kMapX + col * colW;
+    const int y = kLegendY + row * kLegendRow;
+
+    // Simbol kecil (setengah petak) lalu nama.
+    const LegendItem& item = items[i];
+    if (item.glyph == '#' || (item.glyph == ' ' && item.color == ColorId::DarkGreen)) {
+      canvas.fillRect(x, y, 20, 20, colorOf(item.color));
+    } else {
+      const std::string s(1, item.glyph);
+      canvas.text(s, x + (20 - canvas.textWidth(s, kSmallSize)) / 2, y + 2, kSmallSize,
+                  colorOf(item.color));
+    }
+    canvas.text(theme::fit(canvas, item.label, kSmallSize, colW - 30), x + 28, y + 2, kSmallSize, ink());
+  }
 }
 
 }  // namespace rogue

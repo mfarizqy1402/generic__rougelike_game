@@ -1,15 +1,17 @@
 #pragma once
 
-#include <ftxui/component/component_base.hpp>
+#include "ui/ICanvas.hpp"
+#include "ui/InputFrame.hpp"
 
 namespace rogue {
 
-// INTERFACE sebuah layar TUI. Setiap layar menyediakan satu komponen FTXUI
-// yang dipasang ScreenManager sebagai isi jendela.
+// INTERFACE sebuah layar. Tiap frame: update() menerima masukan, lalu draw()
+// menggambar lewat ICanvas. Layar tidak mengenal raylib.
 class IScreen {
  public:
   virtual ~IScreen() = default;
-  virtual ftxui::Component component() = 0;
+  virtual void update(const InputFrame& input) = 0;
+  virtual void draw(ICanvas& canvas) const = 0;
 };
 
 }  // namespace rogue

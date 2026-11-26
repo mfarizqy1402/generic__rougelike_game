@@ -1,10 +1,2 @@
-837|wasdw|Raja Dungeon Versi Diskon
-688|teach|Raja Dungeon Versi Diskon
-590|iki|Legenda Warung Kopi
-547|teach|Legenda Warung Kopi
-539|asdwa|Penguasa Tangga Tak Berujung
-517|Teach|Raja Dungeon Versi Diskon
-468|iki|Legenda Warung Kopi
-459|teach|Legenda Warung Kopi
-422|test|Raja Dungeon Versi Diskon
-285|asdwa|Pendekar Tangga Darurat
+1042|asdwasdw|Raja Dungeon Versi Diskon
+817|wasdwa|Penguasa Tangga Tak Berujung

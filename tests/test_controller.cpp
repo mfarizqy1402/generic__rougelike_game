@@ -341,7 +341,7 @@ void testInitialFloor() {
       CHECK(!c.isOver());
       CHECK(!c.log().empty());
       CHECK_EQ(c.inventoryNames(),
-               (std::vector<std::string>{"Ramuan", "Gulungan Konyol"}));
+               (std::vector<std::string>{"Ramuan", "Gulungan Oleng"}));
       CHECK(c.statusNames().empty());
 
       // Jumlah musuh = 2 + lantai + indeks kesulitan.
@@ -553,7 +553,7 @@ void testDescendingStairsTriggersFloorChanged() {
   CHECK_EQ(c.playerPos(), c.dungeon().start());
   CHECK_EQ(c.playerHp(), Player::kMaxHp - 5);
   CHECK_EQ(c.inventoryNames(),
-           (std::vector<std::string>{"Ramuan", "Gulungan Konyol"}));
+           (std::vector<std::string>{"Ramuan", "Gulungan Oleng"}));
   CHECK_EQ(c.statusNames(),
            (std::vector<std::string>{"Terlalu Percaya Diri"}));
   CHECK_EQ(countEnemies(c.dungeon()), 2 + 2 + 1);  // 2 + lantai + Normal
@@ -702,8 +702,8 @@ void testChestWithTwoItemsGivesBoth() {
       c, {std::make_shared<Potion>(), std::make_shared<Scroll>()});
   c.movePlayer(toward);
   CHECK_EQ(c.inventoryNames(),
-           (std::vector<std::string>{"Ramuan", "Gulungan Konyol", "Ramuan",
-                                     "Gulungan Konyol"}));
+           (std::vector<std::string>{"Ramuan", "Gulungan Oleng", "Ramuan",
+                                     "Gulungan Oleng"}));
 }
 
 void testChestIsNotAKill() {
@@ -880,7 +880,7 @@ void testUseItem() {
   recorder.events.clear();
   c.useItem(0);
   CHECK_EQ(c.playerHp(), Player::kMaxHp - 10 + 8);
-  CHECK_EQ(c.inventoryNames(), (std::vector<std::string>{"Gulungan Konyol"}));
+  CHECK_EQ(c.inventoryNames(), (std::vector<std::string>{"Gulungan Oleng"}));
   CHECK_EQ(recorder.count(EventType::StatusApplied), 0);
 
   // Gulungan: status Cegukan bertambah dan event dipancarkan.

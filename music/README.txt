@@ -1,4 +1,4 @@
-Folder musik latar (BGM) Dungeon Konyol
+Folder musik latar (BGM) generic_roguelike_game
 =======================================
 
 Letakkan berkas musik di folder ini (boleh di dalam subfolder):

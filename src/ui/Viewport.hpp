@@ -7,8 +7,8 @@
 
 namespace rogue {
 
-// Warna logis sebuah petak. Lapisan FTXUI yang menerjemahkannya ke warna
-// terminal; file ini sengaja TANPA include FTXUI agar bisa diuji.
+// Warna logis sebuah petak. Lapisan UI (Palette) yang menerjemahkannya ke warna
+// layar; file ini sengaja TANPA include UI/raylib agar bisa diuji.
 enum class ColorId {
   Default,
   Dim,         // dinding (UI menggambarnya sebagai blok penuh)

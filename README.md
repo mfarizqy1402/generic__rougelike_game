@@ -1,7 +1,7 @@
-# Generic Rougelike Game
+# generic_roguelike_game
 
-Roguelike berbasis giliran dengan antarmuka terminal (TUI). Proyek UAS Pemrograman Berorientasi Objek.
-Bahasa C++17, UI memakai [FTXUI](https://github.com/ArthurSonzogni/FTXUI) v6.1.9 (diunduh otomatis oleh CMake), build dengan CMake.
+Roguelike berbasis giliran dengan antarmuka grafis (jendela 960x680). Proyek UAS Pemrograman Berorientasi Objek.
+Bahasa C++17, UI memakai [raylib](https://github.com/raysan5/raylib) 5.5 (ringan, diunduh otomatis oleh CMake), build dengan CMake.
 
 ## Cara bermain
 
@@ -14,27 +14,31 @@ Jelajahi lantai berbentuk labirin, hindari musuh, ambil item, dan turun lewat ta
 | `1`-`9` | Pakai item nomor tersebut |
 | `Esc` | Keluar |
 
-Di menu: panah atas/bawah pindah kolom, kiri/kanan mengganti kesulitan, `Enter` menekan tombol.
+Di menu: ketik langsung di kolom Nama/Seed, `Tab` atau panah atas/bawah pindah kolom, kiri/kanan mengganti kesulitan, `Enter` memilih tombol (tombol juga bisa diklik mouse).
 Nama harus 3-16 karakter (huruf, angka, spasi). Seed berupa angka (maksimal 9 digit); kosongkan untuk acak.
 Seed yang sama menghasilkan run yang sama pada build yang sama.
 
-Legenda peta (juga tampil di bawah peta saat bermain): `@` kamu, `g` goblin, `s` slime, `H` hantu (semua musuh berwarna merah), `o` batu peliharaan, `C` peti, `>` tangga, blok abu-abu `██` = tembok, petak berlatar hijau = zona aman. Lantai biasa dibiarkan kosong.
+Legenda peta (juga tampil di bawah peta saat bermain): `@` kamu, `g` goblin, `s` slime, `H` hantu (semua musuh berwarna terakota), `o` batu peliharaan, `C` peti, `>` tangga, blok abu-biru `██` = tembok, petak berlatar hijau lumut = zona aman. Lantai biasa dibiarkan kosong.
 
-Ruang loot: sebagian lantai (sekitar 60%) punya satu ruang zona aman berisi 1-3 peti. Musuh tidak bisa melangkah masuk ke sana. Serang peti (jalan ke arahnya) untuk memecahkannya; isinya (Ramuan, kadang Gulungan) masuk ke inventory. Inventory maksimal 9 item; bila tidak muat, peti tidak bisa dibuka.
-Terminal minimal 80x24. Skor tersimpan di `scores.txt` pada direktori kerja.
+Tema tampilan: Frutiger Eco (aqua, hijau daun, langit mutiara, tanpa warna neon) dengan gaya Y2K seperti pemutar media retro: jendela ber-title bar aqua kilap, panel kaca, tombol perak bevel, bar HP seperti slider. Warna ada di `src/ui/Palette.cpp` dan `src/ui/Theme.cpp`; ada tes yang menjaga palet tetap bebas neon dan teksnya terbaca (kontras).
+
+Ruang loot: sebagian lantai (sekitar 60%) punya satu ruang zona aman berisi 1-3 peti. Musuh tidak bisa melangkah masuk ke sana. Serang peti (jalan ke arahnya) untuk memecahkannya; isinya (Ramuan, kadang Gulungan Oleng) masuk ke inventory. Inventory maksimal 9 item; bila tidak muat, peti tidak bisa dibuka.
+Skor tersimpan di `scores.txt` pada direktori kerja.
 
 ## Build dan jalankan
 
-Butuh compiler C++17, CMake 3.16+, git, dan koneksi internet saat konfigurasi pertama (untuk mengunduh FTXUI dan miniaudio). Suara memakai ALSA/PulseAudio/JACK bila ada; untuk build tidak perlu paket tambahan. Tanpa perangkat suara, game tetap jalan tanpa musik.
+Butuh compiler C++17, CMake 3.16+, git, dan koneksi internet saat konfigurasi pertama (untuk mengunduh raylib dan miniaudio). Jendela grafis butuh display; tanpa display game menampilkan pesan galat dan keluar. Suara memakai ALSA/PulseAudio/JACK bila ada. Tanpa perangkat suara, game tetap jalan tanpa musik. raylib dibangun TANPA modul audio bawaannya supaya tidak bentrok dengan miniaudio yang dipakai pemutar musik.
 
 ### Arch Linux
 
+Paket untuk Debian/Ubuntu: `build-essential cmake git libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev`.
+
 ```bash
-sudo pacman -S --needed base-devel cmake git
+sudo pacman -S --needed base-devel cmake git libx11 libxrandr libxinerama libxcursor libxi mesa
 cmake -S . -B build
 cmake --build build
 ctest --test-dir build --output-on-failure
-./build/roguelike
+./build/generic_roguelike_game
 ```
 
 ### Windows
@@ -45,11 +49,11 @@ Buka *Developer PowerShell for VS* (MSVC) atau terminal MinGW dengan CMake dan g
 cmake -S . -B build
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
-.\build\Release\roguelike.exe     # MSVC
-.\build\roguelike.exe             # MinGW (generator tunggal-konfigurasi)
+.\build\Release\generic_roguelike_game.exe     # MSVC
+.\build\generic_roguelike_game.exe             # MinGW (generator tunggal-konfigurasi)
 ```
 
-Gunakan Windows Terminal agar warna dan karakter garis tampil benar.
+Di Windows tidak perlu paket tambahan (raylib memakai OpenGL bawaan sistem).
 Catatan: build di Arch dan Windows belum dicoba oleh penulis kode; pengujian dilakukan dengan GCC 13 dan Clang di Linux.
 
 ## Musik
@@ -59,16 +63,17 @@ Letakkan berkas `.mp3`, `.wav`, atau `.flac` di folder `music/` (boleh di subfol
 ## Struktur
 
 ```
-src/core/        model domain (tanpa UI, tanpa FTXUI)
-src/controller/  GameController dan InputValidator (tanpa FTXUI)
-src/ui/          layar FTXUI dan Viewport
+src/core/        model domain (tanpa UI)
+src/controller/  GameController dan InputValidator (tanpa UI)
+src/ui/          layar, ICanvas, InputFrame, Palette, Theme (widget bergaya Y2K), Viewport (murni, tanpa raylib)
+src/platform/    RaylibCanvas, RaylibInput, Display (satu-satunya kode raylib)
 src/audio/       MiniaudioPlayer (satu-satunya kode yang memakai miniaudio)
 music/           folder lagu BGM
 src/main.cpp     perakitan objek
 tests/           test_*.cpp, kerangka uji kecil di check.hpp
 ```
 
-Aliran satu arah: `ui` memanggil `controller`, `controller` memakai `core`. `core` dan `controller` tidak bergantung pada FTXUI.
+Aliran satu arah: `ui` memanggil `controller`, `controller` memakai `core`. `core` dan `controller` tidak bergantung pada raylib. `ui` hanya mengenal antarmuka `ICanvas` dan `InputFrame`; `platform` mengimplementasikannya dengan raylib (Dependency Inversion), sehingga semua layar bisa diuji tanpa jendela.
 Event handler UI tidak berisi logika bisnis; setiap tombol hanya memanggil satu method `GameController`.
 
 ## Pemetaan rubrik ke kelas
@@ -92,7 +97,7 @@ Event handler UI tidak berisi logika bisnis; setiap tombol hanya memanggil satu 
 
 ### Kelas abstrak dan interface
 - Kelas abstrak: `Entity`, `Enemy`, `StatusEffect`, `Item`, `Achievement`.
-- Interface (semua method murni virtual): `IUsable`, `IGameObserver`, `IScoreStore`, `IScreen`, `IMusicPlayer`.
+- Interface (semua method murni virtual): `IUsable`, `IGameObserver`, `IScoreStore`, `IScreen`, `ICanvas`, `IMusicPlayer`.
 
 ### SOLID
 | Prinsip | Penerapan |
@@ -115,12 +120,14 @@ Layar menangkapnya dan menampilkan pesan, bukan crash. Contoh: input nama salah,
 ### Koleksi STL
 `std::vector` (tile, entity, inventory, papan skor), `std::deque` (log pesan), `std::map` (statistik), `std::optional` (seed), `std::unique_ptr` dan `std::shared_ptr` (kepemilikan).
 
-### TUI minimal 3 layar dan validasi input
+### UI minimal 3 layar dan validasi input
 - Layar: `MenuScreen`, `GameScreen`, `GameOverScreen`, dikelola `ScreenManager`.
 - Validasi: `InputValidator::validateName` dan `parseSeed`; tombol Mulai tersembunyi selama input tidak valid.
 
 ## Pengujian
 
-Dua belas executable uji, dijalankan `ctest`: smoke, dungeon, generator, entities, status_items, controller, extras, scores, music, player, viewport, gamescreen.
-`music` menguji `ShuffleQueue`, `MusicLibrary`, `NullMusicPlayer`; `player` menguji `MiniaudioPlayer` dengan backend null miniaudio (tanpa speaker).
-`gamescreen` merender layar permainan ke layar semu 80x24. Menu dan layar Game Over diuji dengan menjalankan program di terminal semu.
+Delapan belas executable uji, dijalankan `ctest`: smoke, dungeon, generator, entities, status_items, controller, extras, scores, music, viewport, canvas, screenmanager, gamescreen, menuscreen, gameover, player, platform, nodisplay.
+- Layar (`gamescreen`, `menuscreen`, `gameover`, `screenmanager`) diuji dengan `RecordingCanvas`, kanvas palsu yang mencatat panggilan gambar: tanpa jendela, tanpa display.
+- `music` menguji `ShuffleQueue`, `MusicLibrary`, `NullMusicPlayer`; `player` menguji `MiniaudioPlayer` dengan backend null miniaudio (tanpa speaker).
+- `platform` menggambar layar sungguhan ke jendela tersembunyi dan butuh display; tanpa display tes melaporkan SKIP. Jalankan `xvfb-run -a ctest --test-dir build -R platform` di mesin headless.
+- `nodisplay` memastikan game tanpa display keluar dengan kode 1 dan pesan galat, bukan crash.

@@ -3,7 +3,7 @@
 #include <random>
 #include <vector>
 
-#include <ftxui/component/screen_interactive.hpp>
+#include <raylib.h>
 
 #include "audio/MiniaudioPlayer.hpp"
 #include "controller/GameController.hpp"
@@ -20,15 +20,48 @@
 #include "core/SlimeVictim.hpp"
 #include "core/StatsTracker.hpp"
 #include "core/WallBumper.hpp"
+#include "platform/Display.hpp"
+#include "platform/RaylibCanvas.hpp"
+#include "platform/RaylibInput.hpp"
 #include "ui/AppContext.hpp"
 #include "ui/GameOverScreen.hpp"
 #include "ui/GameScreen.hpp"
 #include "ui/MenuScreen.hpp"
 #include "ui/ScreenManager.hpp"
 
+namespace {
+
+constexpr int kWindowW = 960;
+constexpr int kWindowH = 680;
+
+// Menutup jendela dengan aman, juga bila terjadi pengecualian.
+class WindowGuard {
+ public:
+  ~WindowGuard() {
+    if (IsWindowReady()) CloseWindow();
+  }
+};
+
+}  // namespace
+
 int main() {
   using namespace rogue;
   try {
+    SetTraceLogLevel(LOG_WARNING);
+    if (!displayAvailable()) {
+      std::cerr << "Galat: jendela grafis tidak bisa dibuat (cek display/driver GL).\n";
+      return 1;
+    }
+    SetConfigFlags(FLAG_VSYNC_HINT);
+    InitWindow(kWindowW, kWindowH, "generic_roguelike_game");
+    if (!IsWindowReady()) {
+      std::cerr << "Galat: jendela grafis tidak bisa dibuat (cek display/driver GL).\n";
+      return 1;
+    }
+    WindowGuard windowGuard;
+    SetExitKey(KEY_NULL);  // Esc ditangani aplikasi, bukan menutup jendela otomatis
+    SetTargetFPS(60);
+
     GameController controller;
     FileScoreStore store("scores.txt");
     ScoreBoard board(store);
@@ -52,11 +85,10 @@ int main() {
           ShuffleQueue(songs, Rng(std::random_device{}())));
     }
 
+    bool quitRequested = false;
     ScreenManager screens;
-    auto screen = ftxui::ScreenInteractive::Fullscreen();
-
     AppContext context{controller, board, screens, stats, achievements, "",
-                       Difficulty::Normal, screen.ExitLoopClosure(),
+                       Difficulty::Normal, [&quitRequested] { quitRequested = true; },
                        MusicLibrary::statusText(songs.size())};
 
     screens.setFactory([&context](ScreenId id) -> std::unique_ptr<IScreen> {
@@ -72,8 +104,15 @@ int main() {
     });
 
     screens.go(ScreenId::Menu);
+    RaylibCanvas canvas;
     music->start();
-    screen.Loop(screens.host(context.quit));
+    while (!WindowShouldClose() && !quitRequested) {
+      screens.update(readInput(), context.quit);
+      BeginDrawing();
+      ClearBackground(BLACK);
+      screens.draw(canvas);
+      EndDrawing();
+    }
     music->stop();
   } catch (const GameException& error) {
     std::cerr << "Galat game: " << error.what() << '\n';

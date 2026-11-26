@@ -3,8 +3,6 @@
 #include <string>
 #include <vector>
 
-#include <ftxui/component/component_base.hpp>
-
 #include "core/ScoreBoard.hpp"
 #include "ui/AppContext.hpp"
 #include "ui/IScreen.hpp"
@@ -17,17 +15,20 @@ class GameOverScreen : public IScreen {
  public:
   explicit GameOverScreen(AppContext& context);
 
-  ftxui::Component component() override;
+  void update(const InputFrame& input) override;
+  void draw(ICanvas& canvas) const override;
 
  private:
+  enum class Choice { PlayAgain, Menu };
+
   void saveScore();
-  void onPlayAgain();
+  void activate(Choice choice);
 
   AppContext& context_;
   std::string title_;
   std::string message_;
   std::vector<ScoreEntry> top_;
-  ftxui::Component root_;
+  Choice focus_ = Choice::PlayAgain;
 };
 
 }  // namespace rogue

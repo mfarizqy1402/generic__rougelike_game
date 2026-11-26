@@ -145,7 +145,7 @@ void testPotionHealsCapped() {
 void testScrollAddsHiccups() {
   Player player("Tes", Pos{1, 1});
   Scroll scroll;
-  CHECK_EQ(scroll.name(), std::string("Gulungan Konyol"));
+  CHECK_EQ(scroll.name(), std::string("Gulungan Oleng"));
 
   const std::string message = scroll.use(player);
   CHECK(!message.empty());
@@ -163,7 +163,7 @@ void testInventoryPolymorphism() {
   player.inventory().push_back(std::make_shared<Scroll>());
   CHECK_EQ(player.inventory().size(), static_cast<std::size_t>(2));
   CHECK_EQ(player.inventory()[0]->name(), std::string("Ramuan"));
-  CHECK_EQ(player.inventory()[1]->name(), std::string("Gulungan Konyol"));
+  CHECK_EQ(player.inventory()[1]->name(), std::string("Gulungan Oleng"));
 
   // Pemanggilan lewat pointer basis memicu use() milik kelas turunan.
   player.takeDamage(10);

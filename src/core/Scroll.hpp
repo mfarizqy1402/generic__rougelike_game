@@ -6,7 +6,7 @@
 
 namespace rogue {
 
-// Gulungan Konyol: membuat pemain cegukan selama 5 giliran.
+// Gulungan Oleng: membuat pemain cegukan selama 5 giliran.
 class Scroll : public Item {
  public:
   static constexpr int kHiccupTurns = 5;
